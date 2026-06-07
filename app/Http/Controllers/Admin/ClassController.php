@@ -3,63 +3,78 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\SchoolClass;
+use App\Models\Section;
 use Illuminate\Http\Request;
 
 class ClassController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $schoolId = auth()->user()->school_id;
+        $classes = SchoolClass::where('school_id', $schoolId)
+            ->with('sections')
+            ->paginate(15);
+
+        return view('admin.classes.index', compact('classes'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return view('admin.classes.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'numeric_value' => 'required|string|max:10|unique:classes,numeric_value,NULL,id,school_id,' . auth()->user()->school_id,
+            'description' => 'nullable|string',
+        ]);
+
+        $validated['school_id'] = auth()->user()->school_id;
+
+        SchoolClass::create($validated);
+
+        return redirect()->route('admin.classes.index')
+            ->with('success', 'Class created successfully');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(SchoolClass $class)
     {
-        //
+        if ($class->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
+
+        return view('admin.classes.edit', compact('class'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(Request $request, SchoolClass $class)
     {
-        //
+        if ($class->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        $class->update($validated);
+
+        return redirect()->route('admin.classes.index')
+            ->with('success', 'Class updated successfully');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(SchoolClass $class)
     {
-        //
-    }
+        if ($class->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $class->delete();
+
+        return redirect()->route('admin.classes.index')
+            ->with('success', 'Class deleted successfully');
     }
 }

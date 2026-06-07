@@ -3,63 +3,83 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Exam;
+use App\Models\ExamSchedule;
+use App\Models\SchoolClass;
+use App\Models\Subject;
 use Illuminate\Http\Request;
 
 class ExamController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $schoolId = auth()->user()->school_id;
+        $exams = Exam::where('school_id', $schoolId)
+            ->with('schedules')
+            ->paginate(15);
+
+        return view('admin.exams.index', compact('exams'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return view('admin.exams.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+        ]);
+
+        $validated['school_id'] = auth()->user()->school_id;
+
+        Exam::create($validated);
+
+        return redirect()->route('admin.exams.index')
+            ->with('success', 'Exam created successfully');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(Exam $exam)
     {
-        //
+        if ($exam->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
+
+        return view('admin.exams.edit', compact('exam'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(Request $request, Exam $exam)
     {
-        //
+        if ($exam->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+        ]);
+
+        $exam->update($validated);
+
+        return redirect()->route('admin.exams.index')
+            ->with('success', 'Exam updated successfully');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(Exam $exam)
     {
-        //
-    }
+        if ($exam->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $exam->delete();
+
+        return redirect()->route('admin.exams.index')
+            ->with('success', 'Exam deleted successfully');
     }
 }

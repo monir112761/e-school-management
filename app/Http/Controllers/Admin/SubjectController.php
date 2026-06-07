@@ -3,63 +3,86 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Subject;
+use App\Models\SchoolClass;
 use Illuminate\Http\Request;
 
 class SubjectController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $schoolId = auth()->user()->school_id;
+        $subjects = Subject::where('school_id', $schoolId)
+            ->with('class')
+            ->paginate(20);
+
+        return view('admin.subjects.index', compact('subjects'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        $schoolId = auth()->user()->school_id;
+        $classes = SchoolClass::where('school_id', $schoolId)->get();
+
+        return view('admin.subjects.create', compact('classes'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'class_id' => 'required|exists:classes,id',
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|unique:subjects',
+            'description' => 'nullable|string',
+        ]);
+
+        $validated['school_id'] = auth()->user()->school_id;
+
+        Subject::create($validated);
+
+        return redirect()->route('admin.subjects.index')
+            ->with('success', 'Subject created successfully');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(Subject $subject)
     {
-        //
+        if ($subject->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
+
+        $schoolId = auth()->user()->school_id;
+        $classes = SchoolClass::where('school_id', $schoolId)->get();
+
+        return view('admin.subjects.edit', compact('subject', 'classes'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(Request $request, Subject $subject)
     {
-        //
+        if ($subject->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'class_id' => 'required|exists:classes,id',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        $subject->update($validated);
+
+        return redirect()->route('admin.subjects.index')
+            ->with('success', 'Subject updated successfully');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(Subject $subject)
     {
-        //
-    }
+        if ($subject->school_id !== auth()->user()->school_id) {
+            abort(403);
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $subject->delete();
+
+        return redirect()->route('admin.subjects.index')
+            ->with('success', 'Subject deleted successfully');
     }
 }
