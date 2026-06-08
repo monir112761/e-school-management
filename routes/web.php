@@ -36,6 +36,8 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
+
+
 Route::middleware('auth')->group(function () {
     
     // Redirect to appropriate dashboard based on role
